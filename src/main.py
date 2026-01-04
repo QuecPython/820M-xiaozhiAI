@@ -12,6 +12,7 @@ from usr.logging import getLogger
 import sys_bus
 import _thread
 import ujson as json
+from misc import USB
 # from usr import UI
 
 
@@ -75,6 +76,8 @@ class Led(object):
                 if self.__count is not None:
                     self.__count -= 1
 
+enable_flag=0
+
 class Application(object):
 
     def __init__(self):
@@ -86,12 +89,12 @@ class Application(object):
         self.power_green_led = Led(38) #power
         self.lte_red_led = Led(23)
         self.lte_green_led = Led(24)#chat
-        self.led_power_pin = Pin(Pin.GPIO27, Pin.OUT, Pin.PULL_DISABLE, 0)
+        self.led_power_pin = Pin(Pin.GPIO27, Pin.OUT, Pin.PULL_DISABLE, 1)
         self.prev_emoj = None
-        self.power_green_led.blink(500, 500)
+        # self.power_green_led.blink(500, 500)
         self.power_key = PowerKey()
         self.power_key.powerKeyEventRegister(lambda status: None)
-
+        
         
         # 初始化充电管理
         self.charge_manager = ChargeManager()
@@ -126,7 +129,7 @@ class Application(object):
         self.volumedown = ExtInt(ExtInt.GPIO20, ExtInt.IRQ_RISING, ExtInt.PULL_PU, self.setvolumedown, 200)
         # self.power_down = ExtInt(ExtInt.GPIO41, ExtInt.IRQ_RISING, ExtInt.PULL_PU, self.power_down_handle, 200)
         self.volumeup = ExtInt(ExtInt.GPIO47, ExtInt.IRQ_RISING, ExtInt.PULL_PU, self.setvolumeup, 200)
-        self.wakeup_key = Button(41, delay=3000, long_press_callback=self.power_down_handle, short_press_callback= self.on_talk_key_click)
+        # self.wakeup_key = Button(41, delay=3000, long_press_callback=self.power_down_handle, short_press_callback= self.on_talk_key_click)
 
 
     def __record_thread_handler(self):
@@ -137,7 +140,16 @@ class Application(object):
             utime.sleep_ms(5)
         logger.debug("record thread handler exit")
         
-
+    def on_led(self):
+        self.wifi_green_led.on()
+        self.lte_green_led.on()
+        self.power_green_led.on()
+        
+    def off_led(self):
+        self.wifi_green_led.off()
+        self.lte_green_led.off()
+        self.power_green_led.off()
+        
     def start_kws(self):
         self.audio_manager.start_kws()
         self.__record_thread_stop_event.clear()
@@ -151,7 +163,7 @@ class Application(object):
         volume=self.audio_manager.setvolume_down()
         print("setvolumedown:", volume)
         
-    def power_down_handle(self,args):
+    def power_down_handle(self):
         logger.info("power down")
         Power.powerDown()
         
@@ -319,16 +331,53 @@ class Application(object):
         # raise NotImplementedError("handle_error_message not implemented")
 
     def run(self):
+        global enable_flag
         self.charge_manager.enable_charge()
         self.audio_manager.open_opus()
         self.volumedown.enable()
         self.volumeup.enable()
-        # self.power_down.enable()
+        self.power_green_led.blink(500, 500)
+        self.wakeup_key = Button(41, delay=3000, long_press_callback=self.power_down_handle, short_press_callback= self.on_talk_key_click)
+        enable_flag = 1
         self.start_kws()
-        self.led_power_pin.write(1)
         
-        
+        # self.led_power_pin.write(1)
+    
 
-if __name__ == "__main__":
+
+def usb_callback(conn_status):
+    status = conn_status
+    if not enable_flag:
+        if status == 0:
+            app.off_led()
+            Power.powerDown()
+            # enable_flag=1
+            print('USB is disconnected.')
+        elif status == 1:
+            app.on_led()
+            # enable_flag=0
+            
+            print('USB is connected.')
+     
+def power_open_handle():
+    if enable_flag: 
+        app.off_led()
+        app.run()  
+        print("power_open_handle")
+            
+
+
+if __name__ == "__main__":    
+    usb = USB()
     app = Application()
-    app.run()
+    usb.setCallback(usb_callback)
+    # 检查 USB 连接状态
+    if usb.getStatus():  # 假设 getStatus() 返回 True 表示 USB 已连接
+        app.on_led()
+        print("USB 已连接，仅启用充电业务")
+        app.charge_manager.enable_charge()  # 只启用充电业务
+        # Button(41, delay=3000, long_press_callback=power_open_handle, short_press_callback= None)
+
+    else:
+        print("USB 未连接，启动主业务")
+        app.run()

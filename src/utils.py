@@ -275,7 +275,7 @@ class Button(object):
             print("按键按下")
             self.is_pressed = True
             self.start_time = utime.ticks_ms()
-            self.timer.start(self.delay, 0, lambda args: self.long_press_callback(args))
+            self.timer.start(self.delay, 0, lambda args: self.long_press_callback())
         elif self.is_pressed:
             # 上升沿，释放
             print("按键释放")
