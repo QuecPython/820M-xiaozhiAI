@@ -18,6 +18,12 @@ QuecPython introduces the Xiaozhi Platform AI Chatbot solution. This solution is
 
 This demo uses an AI development board equipped with the EC800MCNLE module.
 
+
+
+**Note: Business access is prohibited when the USB is plugged in. After unplugging the USB, long press the button to start the business. If you need to view the logs, you can connect a USB after startup to view the logs**
+
+
+
 ## Features
 
 - Supports voice interruption/barge-in.
@@ -79,6 +85,8 @@ Before getting started, ensure you have the following prerequisites:
    - Right-click and select `Run` or use the `Run` shortcut button to execute the script.
 
 5. **After keyword wake-up, start a conversation. Refer to the runtime log:**
+
+   If it is the first time to wake up, a voice verification code xxxx will be broadcast to remind the user to bind the device in the Xiaozhi backend. The link to the Xiaozhi backend is: https://xiaozhi.me/. After successful registration, re-run the script to wake up and you can have a normal conversation
 
    ![](./media/20250425132727.png)
 
